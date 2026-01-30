@@ -12,9 +12,11 @@ import {
     X,
     Loader2,
     AlertCircle,
-    CheckCircle
+    CheckCircle,
+    Bell
 } from 'lucide-react';
 import type { ProductDetailResponse, ProductResponse, ProductOption } from '../types/product';
+import { savePriceAlert } from '../api/priceAlert';
 
 // 사이즈 값 추출 헬퍼 함수
 const getSizeFromOptions = (options: ProductOption[]): string => {
@@ -40,7 +42,8 @@ export const ProductDetailPage = () => {
     const [allPrices, setAllPrices] = useState<{
         [size: string]: { buyNow: number | null, sellNow: number | null }
     }>({});
-    const [modalMode, setModalMode] = useState<'buy' | 'sell' | null>(null);
+    const [modalMode, setModalMode] = useState<'buy' | 'sell' | 'alert' | null>(null);
+    const [targetPrice, setTargetPrice] = useState<string>('');
 
     const placeholderImage = "https://via.placeholder.com/600x600?text=No+Image";
     const images = product?.products?.[0]?.imageUrls || [];
@@ -144,6 +147,7 @@ export const ProductDetailPage = () => {
             setShowToast(true);
             setModalMode(null);
             setSelectedSize(null);
+            setTargetPrice('');
             setTimeout(() => setShowToast(false), 3000);
         }
     };
@@ -248,14 +252,14 @@ export const ProductDetailPage = () => {
                                 <div className="flex flex-col gap-1 border-r border-gray-100 px-4">
                                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">발매일</span>
                                     <span className="text-xs font-black text-[#333]">
-                    {new Date(productInfo.releaseDate).toLocaleDateString("ko-KR")}
-                  </span>
+                                        {new Date(productInfo.releaseDate).toLocaleDateString("ko-KR")}
+                                    </span>
                                 </div>
                                 <div className="flex flex-col gap-1 pl-4">
                                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">발매가</span>
                                     <span className="text-xs font-black text-[#333]">
-                    {productInfo.releasePrice.toLocaleString()}원
-                  </span>
+                                        {productInfo.releasePrice.toLocaleString()}원
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -284,19 +288,27 @@ export const ProductDetailPage = () => {
                                     <span className="text-lg font-black tracking-tight">판매하기</span>
                                 </button>
                             </div>
-                            <button
-                                className="w-full h-14 rounded-xl border border-solid border-gray-200 bg-white flex items-center justify-center gap-2 transition-all font-bold text-[#333] hover:border-gray-300 active:scale-[0.99]"
-                                onClick={handleToggleWishlist}
-                            >
-                                <Heart size={20} className={isWishlisted ? "text-red-500 fill-red-500" : "text-gray-300"} />
-                                <span>{isWishlisted ? "관심 상품" : "관심 등록"}</span>
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    className="flex-1 h-14 rounded-xl border border-solid border-gray-200 bg-white flex items-center justify-center gap-2 transition-all font-bold text-[#333] hover:border-gray-300 active:scale-[0.99]"
+                                    onClick={handleToggleWishlist}
+                                >
+                                    <Heart size={20} className={isWishlisted ? "text-red-500 fill-red-500" : "text-gray-300"} />
+                                    <span>{isWishlisted ? "관심 상품" : "관심 등록"}</span>
+                                </button>
+                                <button
+                                    className="w-14 h-14 rounded-xl border border-solid border-gray-200 bg-white flex items-center justify-center transition-all text-[#333] hover:border-gray-300 active:scale-[0.99]"
+                                    onClick={() => setModalMode('alert')}
+                                >
+                                    <Bell size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {modalMode && (
                             <div
                                 className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-300"
-                                onClick={() => { setModalMode(null); setSelectedSize(null); }}
+                                onClick={() => { setModalMode(null); setSelectedSize(null); setTargetPrice(''); }}
                             >
                                 <div
                                     className="bg-white w-full max-w-[480px] rounded-t-[32px] sm:rounded-[32px] overflow-hidden animate-in slide-in-from-bottom duration-500 shadow-2xl flex flex-col max-h-[90vh]"
@@ -305,11 +317,13 @@ export const ProductDetailPage = () => {
                                     <div className="p-6 border-b border-gray-50 flex flex-col gap-4">
                                         <div className="flex justify-between items-start">
                                             <div className="flex flex-col">
-                                                <h3 className="text-xl font-bold text-[#333]">{modalMode === 'buy' ? '구매하기' : '판매하기'}</h3>
+                                                <h3 className="text-xl font-bold text-[#333]">
+                                                    {modalMode === 'buy' ? '구매하기' : modalMode === 'sell' ? '판매하기' : '가격 알림 설정'}
+                                                </h3>
                                                 <span className="text-[11px] text-gray-400 font-medium">(가격 단위: 원)</span>
                                             </div>
                                             <button
-                                                onClick={() => { setModalMode(null); setSelectedSize(null); }}
+                                                onClick={() => { setModalMode(null); setSelectedSize(null); setTargetPrice(''); }}
                                                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 -mr-2"
                                             >
                                                 <X size={24} />
@@ -320,9 +334,9 @@ export const ProductDetailPage = () => {
                                                 <img src={mainImage} alt="" className="w-full h-full object-contain mix-blend-multiply" />
                                             </div>
                                             <div className="flex flex-col min-w-0">
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
-                          {modalMode === 'buy' ? 'BUYING' : 'SELLING'}
-                        </span>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                                                    {modalMode === 'buy' ? 'BUYING' : modalMode === 'sell' ? 'SELLING' : 'PRICE ALERT'}
+                                                </span>
                                                 <span className="text-sm font-bold text-gray-900 truncate">{productInfo.name}</span>
                                                 <span className="text-[11px] text-gray-500 truncate">{productInfo.brand.name} • {productInfo.code}</span>
                                             </div>
@@ -332,7 +346,7 @@ export const ProductDetailPage = () => {
                                         <div className="grid grid-cols-3 gap-3">
                                             {availableSizes.map(size => {
                                                 const sizePrice = allPrices[size];
-                                                const displayPrice = modalMode === 'buy' ? sizePrice?.buyNow : sizePrice?.sellNow;
+                                                const displayPrice = modalMode === 'buy' ? sizePrice?.buyNow : modalMode === 'sell' ? sizePrice?.sellNow : sizePrice?.buyNow;
                                                 const productVariant = product.products.find(p => getSizeFromOptions(p.options) === size);
 
                                                 return (
@@ -340,34 +354,31 @@ export const ProductDetailPage = () => {
                                                         key={size}
                                                         onClick={() => setSelectedSize(size)}
                                                         disabled={!productVariant}
-                                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border border-solid transition-all group ${
-                                                            !productVariant
-                                                                ? 'bg-gray-50 cursor-not-allowed'
-                                                                : selectedSize === size
-                                                                    ? 'border-gray-900 bg-white ring-2 ring-gray-900 ring-inset shadow-md'
-                                                                    : 'border-gray-100 bg-white hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
+                                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border border-solid transition-all group ${!productVariant
+                                                            ? 'bg-gray-50 cursor-not-allowed'
+                                                            : selectedSize === size
+                                                                ? 'border-gray-900 bg-white ring-2 ring-gray-900 ring-inset shadow-md'
+                                                                : 'border-gray-100 bg-white hover:border-gray-300 hover:bg-gray-50'
+                                                            }`}
                                                     >
-                            <span className={`text-[15px] font-bold ${
-                                !productVariant
-                                    ? 'text-gray-300'
-                                    : selectedSize === size
-                                        ? 'text-gray-900'
-                                        : 'text-[#333]'
-                            }`}>
-                              {size}
-                            </span>
-                                                        <span className={`text-[10px] font-bold mt-1 ${
-                                                            !productVariant
-                                                                ? 'text-gray-300'
-                                                                : displayPrice
-                                                                    ? (modalMode === 'buy' ? 'text-red-500' : 'text-green-600')
-                                                                    : 'text-gray-300'
-                                                        }`}>
-                              {productVariant
-                                  ? (displayPrice ? `${displayPrice.toLocaleString()}` : (modalMode === 'buy' ? '구매입찰' : '판매입찰'))
-                                  : '-'}
-                            </span>
+                                                        <span className={`text-[15px] font-bold ${!productVariant
+                                                            ? 'text-gray-300'
+                                                            : selectedSize === size
+                                                                ? 'text-gray-900'
+                                                                : 'text-[#333]'
+                                                            }`}>
+                                                            {size}
+                                                        </span>
+                                                        <span className={`text-[10px] font-bold mt-1 ${!productVariant
+                                                            ? 'text-gray-300'
+                                                            : displayPrice
+                                                                ? (modalMode === 'buy' || modalMode === 'alert' ? 'text-red-500' : 'text-green-600')
+                                                                : 'text-gray-300'
+                                                            }`}>
+                                                            {productVariant
+                                                                ? (displayPrice ? `${displayPrice.toLocaleString()}` : (modalMode === 'buy' || modalMode === 'alert' ? '구매입찰' : '판매입찰'))
+                                                                : '-'}
+                                                        </span>
                                                     </button>
                                                 );
                                             })}
@@ -376,19 +387,54 @@ export const ProductDetailPage = () => {
 
                                     {selectedSize && (
                                         <div className="p-6 border-t border-gray-100 bg-white">
-                                            <button
-                                                onClick={() => {
-                                                    const selectedProduct = product.products.find(p => getSizeFromOptions(p.options) === selectedSize);
-                                                    if (selectedProduct) {
-                                                        navigate(`/${modalMode === 'buy' ? 'purchase' : 'sales'}/${selectedProduct.productId}`);
-                                                    }
-                                                }}
-                                                className="w-full h-14 rounded-xl bg-accent text-white font-bold text-lg"
-                                            >
-                                                {allPrices[selectedSize] && (modalMode === 'buy' ? allPrices[selectedSize]?.buyNow : allPrices[selectedSize]?.sellNow)
-                                                    ? '즉시주문 계속'
-                                                    : '입찰 계속'}
-                                            </button>
+                                            {modalMode === 'alert' ? (
+                                                <div className="flex flex-col gap-3">
+                                                    <input
+                                                        type="number"
+                                                        value={targetPrice}
+                                                        onChange={(e) => setTargetPrice(e.target.value)}
+                                                        placeholder="알림 받을 가격을 입력하세요"
+                                                        className="w-full h-12 px-4 rounded-xl border border-gray-200 outline-none focus:border-black font-bold text-lg"
+                                                    />
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!targetPrice) return;
+                                                            const selectedProduct = product.products.find(p => getSizeFromOptions(p.options) === selectedSize);
+                                                            if (selectedProduct) {
+                                                                try {
+                                                                    await savePriceAlert({
+                                                                        targetPrice: Number(targetPrice),
+                                                                        productId: selectedProduct.productId
+                                                                    });
+                                                                    alert('가격 알림이 설정되었습니다.');
+                                                                    setModalMode(null);
+                                                                    setSelectedSize(null);
+                                                                    setTargetPrice('');
+                                                                } catch (e) {
+                                                                    alert('가격 알림 설정에 실패했습니다.');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="w-full h-14 rounded-xl bg-black text-white font-bold text-lg"
+                                                    >
+                                                        알림 설정하기
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        const selectedProduct = product.products.find(p => getSizeFromOptions(p.options) === selectedSize);
+                                                        if (selectedProduct) {
+                                                            navigate(`/${modalMode === 'buy' ? 'purchase' : 'sales'}/${selectedProduct.productId}`);
+                                                        }
+                                                    }}
+                                                    className="w-full h-14 rounded-xl bg-accent text-white font-bold text-lg"
+                                                >
+                                                    {allPrices[selectedSize] && (modalMode === 'buy' ? allPrices[selectedSize]?.buyNow : allPrices[selectedSize]?.sellNow)
+                                                        ? '즉시주문 계속'
+                                                        : '입찰 계속'}
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
