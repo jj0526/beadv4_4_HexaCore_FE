@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { User, ShoppingBag, CreditCard, Grid, ChevronRight, Settings, LogOut, Truck } from 'lucide-react';
+import { User, ShoppingBag, CreditCard, Grid, ChevronRight, Settings, LogOut, Truck, Bell } from 'lucide-react';
+import { updateNotificationSettings } from '../api/user';
 
 /* Mock Data for Transactions */
 const TRANSACTIONS = [
@@ -160,6 +161,13 @@ export const MyPage = () => {
                                 <span>예치금 관리</span>
                             </button>
                             <div className="h-px bg-gray-50 mx-4"></div>
+                            <button
+                                className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-bold transition-all ${activeTab === 'notification' ? 'text-accent bg-accent/5' : 'text-gray-500 hover:bg-gray-50'}`}
+                                onClick={() => handleTabChange('notification')}
+                            >
+                                <Bell size={18} />
+                                <span>알림 설정</span>
+                            </button>
                             <button className="w-full flex items-center gap-3 px-6 py-4 text-sm font-bold text-gray-400 hover:bg-gray-50 transition-all">
                                 <Settings size={18} />
                                 <span>설정</span>
@@ -346,9 +354,111 @@ export const MyPage = () => {
                                 </div>
                             </section>
                         )}
+                        {activeTab === 'notification' && (
+                            <NotificationSettings />
+                        )}
                     </main>
                 </div>
             </div>
         </div>
+    );
+};
+
+const NotificationSettings = () => {
+    // NOTE: 초기값을 false로 설정. 백엔드에서 GET API가 있다면 여기서 불러와야 함.
+    const [settings, setSettings] = useState({
+        bidStatusEnabled: false,
+        productStatusEnabled: false,
+        priceEnabled: false,
+        settlementEnabled: false,
+    });
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleToggle = (key: keyof typeof settings) => {
+        setSettings(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
+
+    const handleSave = async () => {
+        setIsLoading(true);
+        try {
+            await updateNotificationSettings(settings);
+            alert("알림 설정이 저장되었습니다.");
+        } catch (error) {
+            console.error(error);
+            alert("알림 설정 저장에 실패했습니다.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <section className="bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+            <h3 className="text-xl font-bold text-[#333] mb-8 pb-4 border-b border-gray-100">알림 설정</h3>
+
+            <div className="max-w-[480px] mx-auto space-y-8 py-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="font-bold text-[#333] mb-1">입찰 알림</div>
+                        <div className="text-xs text-gray-400">입찰 상태 변경 시 알림을 받습니다.</div>
+                    </div>
+                    <button
+                        onClick={() => handleToggle('bidStatusEnabled')}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.bidStatusEnabled ? 'bg-accent' : 'bg-gray-200'}`}
+                    >
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${settings.bidStatusEnabled ? 'left-[26px]' : 'left-0.5'}`} />
+                    </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="font-bold text-[#333] mb-1">상품 알림</div>
+                        <div className="text-xs text-gray-400">관심 상품의 정보를 알림으로 받습니다.</div>
+                    </div>
+                    <button
+                        onClick={() => handleToggle('productStatusEnabled')}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.productStatusEnabled ? 'bg-accent' : 'bg-gray-200'}`}
+                    >
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${settings.productStatusEnabled ? 'left-[26px]' : 'left-0.5'}`} />
+                    </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="font-bold text-[#333] mb-1">가격 알림</div>
+                        <div className="text-xs text-gray-400">설정한 가격 도달 시 알림을 받습니다.</div>
+                    </div>
+                    <button
+                        onClick={() => handleToggle('priceEnabled')}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.priceEnabled ? 'bg-accent' : 'bg-gray-200'}`}
+                    >
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${settings.priceEnabled ? 'left-[26px]' : 'left-0.5'}`} />
+                    </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="font-bold text-[#333] mb-1">정산 알림</div>
+                        <div className="text-xs text-gray-400">정산 완료 시 알림을 받습니다.</div>
+                    </div>
+                    <button
+                        onClick={() => handleToggle('settlementEnabled')}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.settlementEnabled ? 'bg-accent' : 'bg-gray-200'}`}
+                    >
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${settings.settlementEnabled ? 'left-[26px]' : 'left-0.5'}`} />
+                    </button>
+                </div>
+
+                <button
+                    onClick={handleSave}
+                    disabled={isLoading}
+                    className="w-full bg-accent text-white py-4 rounded-xl font-bold shadow-lg shadow-accent/20 transition-all hover:bg-[#4a58b0] hover:-translate-y-0.5 mt-8 disabled:opacity-50"
+                >
+                    {isLoading ? '저장 중...' : '설정 저장'}
+                </button>
+            </div>
+        </section>
     );
 };
