@@ -553,11 +553,6 @@ const PriceAlertList = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div>
-                                {alert.triggeredAt && (
-                                    <span className="px-3 py-1 bg-red-100 text-red-500 rounded-full text-xs font-bold">알림 발송됨</span>
-                                )}
-                            </div>
                         </div>
                     ))}
                 </div>
