@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { User, ShoppingBag, CreditCard, Grid, ChevronRight, Settings, LogOut, Truck, Bell } from 'lucide-react';
 import { updateNotificationSettings, getNotificationSettings } from '../api/user';
+import { getPriceAlerts, type PriceAlertResponseDto } from '../api/priceAlert';
 
 /* Mock Data for Transactions */
 const TRANSACTIONS = [
@@ -355,7 +356,10 @@ export const MyPage = () => {
                             </section>
                         )}
                         {activeTab === 'notification' && (
-                            <NotificationSettings />
+                            <div className="space-y-6">
+                                <NotificationSettings />
+                                <PriceAlertList />
+                            </div>
                         )}
                     </main>
                 </div>
@@ -487,6 +491,75 @@ const NotificationSettings = () => {
                     >
                         {isLoading ? '저장 중...' : '설정 저장'}
                     </button>
+                </div>
+            )}
+        </section>
+    );
+};
+
+const PriceAlertList = () => {
+    const [alerts, setAlerts] = useState<PriceAlertResponseDto[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchAlerts = async () => {
+            try {
+                const data = await getPriceAlerts();
+                const alertList = Array.isArray(data) ? data : [];
+                setAlerts(alertList);
+            } catch (error) {
+                console.error("Failed to fetch price alerts:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchAlerts();
+    }, []);
+
+    if (isLoading) {
+        return (
+            <section className="bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                <h3 className="text-xl font-bold text-[#333] mb-8 pb-4 border-b border-gray-100">가격 알림 목록</h3>
+                <div className="flex justify-center py-10">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+                </div>
+            </section>
+        );
+    }
+
+    return (
+        <section className="bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+            <h3 className="text-xl font-bold text-[#333] mb-8 pb-4 border-b border-gray-100">가격 알림 목록</h3>
+
+            {alerts.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                    설정된 가격 알림이 없습니다.
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {alerts.map((alert) => (
+                        <div key={alert.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl transition-all hover:bg-gray-50 bg-white">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-gray-50 rounded-lg flex-shrink-0 border border-gray-100 p-1 overflow-hidden flex items-center justify-center">
+                                    <ShoppingBag className="text-gray-300" size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-[#333]">상품 ID: {alert.productId}</h4>
+                                    <div className="text-sm text-gray-400 mt-1">
+                                        목표 가격: <span className="font-bold text-accent">{alert.targetPrice.toLocaleString()}원</span>
+                                    </div>
+                                    <div className="text-xs text-gray-300 mt-1">
+                                        등록일: {new Date(alert.createdAt).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                {alert.triggeredAt && (
+                                    <span className="px-3 py-1 bg-red-100 text-red-500 rounded-full text-xs font-bold">알림 발송됨</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
         </section>
