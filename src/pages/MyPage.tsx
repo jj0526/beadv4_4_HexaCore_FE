@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { User, ShoppingBag, CreditCard, Grid, ChevronRight, Settings, LogOut, Truck, Bell } from 'lucide-react';
+import { User, ShoppingBag, CreditCard, Grid, ChevronRight, Settings, LogOut, Truck, Bell, Trash2 } from 'lucide-react';
 import { updateNotificationSettings, getNotificationSettings } from '../api/user';
-import { getPriceAlerts, type PriceAlertResponseDto } from '../api/priceAlert';
+import { getPriceAlerts, deletePriceAlert, type PriceAlertResponseDto } from '../api/priceAlert';
 
 /* Mock Data for Transactions */
 const TRANSACTIONS = [
@@ -516,6 +516,18 @@ const PriceAlertList = () => {
         fetchAlerts();
     }, []);
 
+    const handleDelete = async (alertId: number) => {
+        if (!window.confirm("정말 이 알림을 삭제하시겠습니까?")) return;
+
+        try {
+            await deletePriceAlert(alertId);
+            setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
+        } catch (error) {
+            console.error("Failed to delete price alert:", error);
+            alert("알림 삭제에 실패했습니다.");
+        }
+    };
+
     if (isLoading) {
         return (
             <section className="bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
@@ -553,6 +565,13 @@ const PriceAlertList = () => {
                                     </div>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => handleDelete(alert.id)}
+                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                aria-label="알림 삭제"
+                            >
+                                <Trash2 size={20} />
+                            </button>
                         </div>
                     ))}
                 </div>

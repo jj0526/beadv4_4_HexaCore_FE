@@ -26,3 +26,8 @@ export const getPriceAlerts = async () => {
     const response = await axiosInstance.get<any>('/api/v1/price-alerts');
     return response.data?.data || response.data;
 };
+
+export const deletePriceAlert = async (priceAlertId: number) => {
+    const response = await axiosInstance.delete(`/api/v1/price-alerts/${priceAlertId}`);
+    return response.data;
+};
